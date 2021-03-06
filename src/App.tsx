@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import classNames from 'classnames'
 
 import Loader from 'components/Loader'
@@ -6,9 +6,9 @@ import Button from './components/styled/Button'
 
 import StyledApp from './StyledApp'
 
-import Matrix from './assets/images/matrix.jpg'
+// import Matrix from './assets/images/matrix.jpg'
 
-import rgbToHex from './helpers/rgbToHex'
+// import rgbToHex from './helpers/rgbToHex'
 import drawImageArray from './helpers/drawImageArray'
 
 import kmeans from './wokers/k-means'

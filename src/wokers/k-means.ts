@@ -5,7 +5,7 @@ import { PixelVector, Centroid } from 'types/vector'
 function kmeans(pixels: number[], numberOfCentroids: number): PixelVector[] {
   console.log('Running k-means. Number of centroids: ', numberOfCentroids)
 
-  const ITERATIONS = 50
+  // const ITERATIONS = 50
 
   // @TODO: Find out how to move this into it's own file and regiter it here.
   function indexOfMin(arr: number[]) {
