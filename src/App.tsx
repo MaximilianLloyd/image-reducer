@@ -16,27 +16,29 @@ import { PixelVector } from 'types/vector'
 
 const App: React.FC = () => {
   const [centroids, setCentroids] = useState(3)
+  const [iterations, setIterations] = useState(3)
+
   const [loading, setLoading] = useState(false)
   const [size, setSize] = useState({
     width: 500,
     height: 300,
   })
+  const [resultImageSrc, setResultImageSrc] = useState('')
   const [hasReducedOnce, setHasReducedOnce] = useState(false)
-  const canvasRef: any = useRef()
+  // const canvasRef: any = useRef()
   const imageRef: any = useRef()
 
   const reduce = async () => {
     if (!hasReducedOnce) setHasReducedOnce(true)
     setLoading(true)
-    const canvas: any = canvasRef.current
     const internalCanvas: any = document.createElement('canvas')
 
-    const canvasAndImageExists = canvas && imageRef.current
+    // const canvasAndImageExists = imageRef.current
 
-    if (canvasAndImageExists) {
-      const context = canvas.getContext('2d')
-      const canvasHeight = canvas.height
-      const canvasWidth = canvas.width
+    if (imageRef.current) {
+      // const context = canvas.getContext('2d')
+      const canvasHeight = size.height
+      const canvasWidth = size.width
 
       // context.drawImage(imageRef.current, 0, 0);
       const internalContext = internalCanvas.getContext('2d')
@@ -47,21 +49,26 @@ const App: React.FC = () => {
 
       const imgData = internalContext.getImageData(0, 0, canvasWidth, canvasHeight)
       const { data } = imgData
+      console.log(data)
 
-      const predictedPixels: PixelVector[] = await kmeans(data, centroids)
+      const predictedPixels: any[] = await kmeans(data, centroids, iterations)
       setLoading(false)
 
       const newImage: number[] = []
 
       predictedPixels.forEach((pixel) => {
         const { x: red, y: green, z: blue } = pixel.centroid!
+
         newImage.push(red)
         newImage.push(green)
         newImage.push(blue)
         newImage.push(255) // alpha
       })
 
-      drawImageArray(context, newImage, canvasWidth, canvasHeight)
+      drawImageArray(internalContext, newImage, canvasWidth, canvasHeight)
+      setTimeout(() => {
+        setResultImageSrc(internalCanvas.toDataURL())
+      })
     }
   }
 
@@ -92,16 +99,20 @@ const App: React.FC = () => {
         <div className="inputs">
           <Button onClick={reduce}>Reduce image</Button>
           <label>Centroids {centroids}</label>
-          <input type="number" onChange={(event: any) => setCentroids(event.target.value)} />
+          <input type="number" value={centroids} onChange={(event: any) => setCentroids(event.target.value)} />
+
+          <label>Iterations</label>
+          <input type="number" value={iterations} onChange={(event: any) => setIterations(event.target.value)} />
         </div>
         {loading && <Loader />}
-        <canvas
+        {/* <canvas
           width={size.width}
           height={size.height}
           id="canvas"
-          className={classNames({ hidden: !hasReducedOnce || loading })}
+          className={classNames({ hidden: true })}
           ref={(c) => (canvasRef.current = c)}
-        />
+        /> */}
+        {resultImageSrc && <img className="result-image" src={resultImageSrc} />}
       </div>
     </StyledApp>
   )

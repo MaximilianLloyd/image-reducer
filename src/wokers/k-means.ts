@@ -1,30 +1,13 @@
 import workerpool from 'workerpool'
+import { GPU } from 'gpu.js'
+import Vector, { PixelVector, Centroid } from 'types/vector'
 
-import { PixelVector, Centroid } from 'types/vector'
+// remember to pass this to the worker
+import indexOfMin from 'helpers/indexOfMin'
 
-function kmeans(pixels: number[], numberOfCentroids: number): PixelVector[] {
+function kmeans(pixels: number[], numberOfCentroids: number, iterations = 5): PixelVector[] {
   console.log('Running k-means. Number of centroids: ', numberOfCentroids)
-
-  // const ITERATIONS = 50
-
   // @TODO: Find out how to move this into it's own file and regiter it here.
-  function indexOfMin(arr: number[]) {
-    if (arr.length === 0) {
-      return -1
-    }
-
-    let max = arr[0]
-    let maxIndex = 0
-
-    for (let i = 1; i < arr.length; i++) {
-      if (arr[i] < max) {
-        maxIndex = i
-        max = arr[i]
-      }
-    }
-
-    return maxIndex
-  }
 
   const rgbPixels: PixelVector[] = []
   const centroids: Centroid[] = []
@@ -55,32 +38,69 @@ function kmeans(pixels: number[], numberOfCentroids: number): PixelVector[] {
   }
 
   // Initial assignment
-
   rgbPixels.forEach((pixel) => {
     const { x: pRed, y: pGreen, z: pBlue } = pixel
 
-    const deltas: number[] = []
-
-    centroids.forEach((centroid) => {
+    const deltas: number[] = centroids.map((centroid) => {
       const { x: cRed, y: cGreen, z: cBlue } = centroid
 
       const delta = Math.abs(pRed - cRed) + Math.abs(pGreen - cGreen) + Math.abs(pBlue - cBlue)
-      deltas.push(delta)
+      return delta
     })
     // asign pixel to a centroid
     const cIndex = indexOfMin(deltas)
     const centroid = centroids[cIndex]
+
     pixel.centroid = centroid
     centroid.children.push(pixel)
   })
 
+  for (let i = 0; i < iterations; i++) {
+    centroids.forEach((centroid) => {
+      const numberOfPixles = centroid.children.length
+      const newPosition: Vector = { x: 0, y: 0, z: 0 }
+
+      centroid.children.forEach((pixel: any) => {
+        newPosition.x += pixel.x
+        newPosition.y += pixel.y
+        newPosition.z += pixel.z
+      })
+
+      centroid.x = newPosition.x / numberOfPixles
+      centroid.y = newPosition.y / numberOfPixles
+      centroid.z = newPosition.z / numberOfPixles
+
+      centroid.children = []
+    })
+
+    rgbPixels.forEach((pixel) => {
+      const { x: pRed, y: pGreen, z: pBlue } = pixel
+
+      const deltas: number[] = centroids.map((centroid) => {
+        const { x: cRed, y: cGreen, z: cBlue } = centroid
+
+        const delta = Math.abs(pRed - cRed) + Math.abs(pGreen - cGreen) + Math.abs(pBlue - cBlue)
+        return delta
+      })
+      // asign pixel to a centroid
+      const cIndex = indexOfMin(deltas)
+      const centroid = centroids[cIndex]
+
+      pixel.centroid = centroid
+      centroid.children.push(pixel)
+    })
+  }
+
   return rgbPixels
 }
 
-function wrapper(pixels: number[], centroids: number): any {
+function wrapper(pixels: number[], centroids: number, iterations: number): any {
   const pool = workerpool.pool()
 
-  return pool.exec(kmeans, [pixels, centroids])
+  console.log(centroids, iterations)
+
+  // return pool.exec(kmeans, [pixels, centroids, iterations, gpu])
+  return kmeans(pixels, centroids, iterations)
 }
 
 export default wrapper

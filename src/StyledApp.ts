@@ -29,4 +29,8 @@ export default styled.div`
   .file-upload-container {
     margin: 20px 0px;
   }
+
+  .result-image {
+    width: 600px;
+  }
 `
