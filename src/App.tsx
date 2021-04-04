@@ -49,14 +49,15 @@ const App: React.FC = () => {
 
       const imgData = internalContext.getImageData(0, 0, canvasWidth, canvasHeight)
       const { data } = imgData
-      console.log(data)
 
-      const predictedPixels: any[] = await kmeans(data, centroids, iterations)
+      const [predictedPixels, calculatedCentroids] = await kmeans(data, centroids, iterations)
       setLoading(false)
+
+      console.log(calculatedCentroids)
 
       const newImage: number[] = []
 
-      predictedPixels.forEach((pixel) => {
+      predictedPixels.forEach((pixel: any) => {
         const { x: red, y: green, z: blue } = pixel.centroid!
 
         newImage.push(red)

@@ -2,39 +2,29 @@ import workerpool from 'workerpool'
 import Vector, { PixelVector, Centroid } from 'types/vector'
 
 // remember to pass this to the worker
-import indexOfMin from 'helpers/indexOfMin'
+// import indexOfMin from 'helpers/indexOfMin'
+// todo: the issue here is the dissasociasion of children
+function indexOfSmallest(a: any) {
+  let lowest = 0
+  for (let i = 1; i < a.length; i++) {
+    if (a[i] < a[lowest]) lowest = i
+  }
+  return lowest
+}
+
+function randomClamped255() {
+  return Math.floor(Math.random() * 255)
+}
+
+function getVertex3InMatrix(matrix: any, index: number) {
+  const x = matrix[index + 0]
+  const y = matrix[index + 1]
+  const z = matrix[index + 2]
+
+  return [x, y, z]
+}
 
 function kmeans(inputPixels: Uint8ClampedArray[], numberOfCentroids: number, iterations = 5): any {
-  function indexOfMin(arr: number[]): number {
-    if (arr.length === 0) {
-      return -1
-    }
-
-    let max = arr[0]
-    let maxIndex = 0
-
-    for (let i = 1; i < arr.length; i++) {
-      if (arr[i] < max) {
-        maxIndex = i
-        max = arr[i]
-      }
-    }
-
-    return maxIndex
-  }
-
-  function randomClamped255() {
-    return Math.floor(Math.random() * 255)
-  }
-
-  function getVertex3InMatrix(matrix: any, index: number) {
-    const x = matrix[index + 0]
-    const y = matrix[index + 1]
-    const z = matrix[index + 2]
-
-    return [x, y, z]
-  }
-
   const RED_INDEX = 0
   const GREEN_INDEX = 1
   const BLUE_INDEX = 2
@@ -43,8 +33,6 @@ function kmeans(inputPixels: Uint8ClampedArray[], numberOfCentroids: number, ite
   // R - G - B
   const centroids = new Uint8ClampedArray(numberOfCentroids * 3)
   const rgbPixels = new Uint8ClampedArray(inputPixels as any)
-
-  const centroidIndexPerPixel = new Uint8ClampedArray(inputPixels.length / 4)
 
   // Place centroids randmly
   for (let cI = 0; cI < centroids.length; cI += 3) {
@@ -58,8 +46,8 @@ function kmeans(inputPixels: Uint8ClampedArray[], numberOfCentroids: number, ite
   }
 
   // Initial assignment
-  for (let i = 0; i < rgbPixels.length; i += 4) {
-    const [pRed, pGreen, pBlue] = getVertex3InMatrix(rgbPixels, i)
+  for (let pixelIndex = 0; pixelIndex < rgbPixels.length; pixelIndex += 4) {
+    const [pRed, pGreen, pBlue] = getVertex3InMatrix(rgbPixels, pixelIndex)
 
     const deltas = []
 
@@ -70,73 +58,75 @@ function kmeans(inputPixels: Uint8ClampedArray[], numberOfCentroids: number, ite
       deltas.push(delta)
     }
 
-    const centroidIndex = indexOfMin(deltas)
-    const pixelIndex = i / 4
-    centroidIndexPerPixel[pixelIndex] = centroidIndex
-    const [cRed, cGreen, cBlue] = getVertex3InMatrix(centroids, centroidIndex)
+    const centroidIndex = indexOfSmallest(deltas)
+    const [cRed, cGreen, cBlue] = getVertex3InMatrix(centroids, centroidIndex * 3)
 
-    rgbPixels[i + RED_INDEX] = cRed
-    rgbPixels[i + GREEN_INDEX] = cGreen
-    rgbPixels[i + BLUE_INDEX] = cBlue
+    rgbPixels[pixelIndex + RED_INDEX] = cRed
+    rgbPixels[pixelIndex + GREEN_INDEX] = cGreen
+    rgbPixels[pixelIndex + BLUE_INDEX] = cBlue
   }
 
-  // Iterations
+  console.log(iterations)
 
-  // for (let _ = 0; _ < iterations; _++) {
-  //   for (let j = 0; j < centroids.length; j += 3) {
-  //     const centroidIndex = j / 3
+  for (let _ = 0; _ < iterations; _++) {
+    for (let cI = 0; cI < centroids.length; cI += 3) {
+      const [cRed, cGreen, cBlue] = getVertex3InMatrix(centroids, cI)
 
-  //     let newCentroidRed = 0
-  //     let newCentroidGreen = 0
-  //     let newCentroidBlue = 0
+      let newRed = 0
+      let newGreen = 0
+      let newBlue = 0
+      let count = 0
 
-  //     const numberOfPixelsAssigned = centroidIndexPerPixel.filter((v) => v === centroidIndex).length
+      for (let pI = 0; pI < rgbPixels.length; pI += 4) {
+        const [pRed, pGreen, pBlue] = getVertex3InMatrix(rgbPixels, pI)
 
-  //     for (let pixelIndex = 0; pixelIndex < rgbPixels.length; pixelIndex += 4) {
-  //       const wholePixelIndex = pixelIndex / 4
-  //       const cppIndex = centroidIndexPerPixel[wholePixelIndex]
-  //       const [pRed, pGreen, pBlue] = getVertex3InMatrix(rgbPixels, pixelIndex)
+        const isAssociated = pRed === cRed && pGreen === cGreen && pBlue === cBlue
 
-  //       if (cppIndex === centroidIndex) {
-  //         newCentroidRed += pRed
-  //         newCentroidGreen += pGreen
-  //         newCentroidBlue += pBlue
-  //       }
-  //     }
+        if (isAssociated) {
+          newRed += pRed
+          newGreen += pGreen
+          newBlue += pBlue
+          count++
+        }
+      }
 
-  //     centroids[j + RED_INDEX] = newCentroidRed / numberOfPixelsAssigned
-  //     centroids[j + GREEN_INDEX] = newCentroidGreen / numberOfPixelsAssigned
-  //     centroids[j + BLUE_INDEX] = newCentroidBlue / numberOfPixelsAssigned
-  //   }
+      newRed = Math.floor(newRed / count)
+      newGreen = Math.floor(newGreen / count)
+      newBlue = Math.floor(newBlue / count)
 
-  //   for (let i = 0; i < rgbPixels.length; i += 4) {
-  //     const [pRed, pGreen, pBlue] = getVertex3InMatrix(rgbPixels, i)
+      centroids[cI + RED_INDEX] = newRed
+      centroids[cI + GREEN_INDEX] = newGreen
+      centroids[cI + BLUE_INDEX] = newBlue
+    }
 
-  //     const deltas = []
+    console.log(centroids)
 
-  //     for (let jj = 0; jj < centroids.length; jj += 3) {
-  //       const [cRed, cGreen, cBlue] = getVertex3InMatrix(centroids, jj)
+    for (let pixelIndex = 0; pixelIndex < rgbPixels.length; pixelIndex += 4) {
+      const [pRed, pGreen, pBlue] = getVertex3InMatrix(rgbPixels, pixelIndex)
 
-  //       const delta = Math.abs(pRed - cRed) + Math.abs(pGreen - cGreen) + Math.abs(pBlue - cBlue)
-  //       deltas.push(delta)
-  //     }
+      const deltas = []
 
-  //     const centroidIndex = indexOfMin(deltas)
-  //     const [cRed, cGreen, cBlue] = getVertex3InMatrix(centroids, centroidIndex)
+      for (let j = 0; j < centroids.length; j += 3) {
+        const [cRed, cGreen, cBlue] = getVertex3InMatrix(centroids, j)
 
-  //     rgbPixels[i + RED_INDEX] = cRed
-  //     rgbPixels[i + GREEN_INDEX] = cGreen
-  //     rgbPixels[i + BLUE_INDEX] = cBlue
-  //   }
-  // }
+        const delta = Math.abs(pRed - cRed) + Math.abs(pGreen - cGreen) + Math.abs(pBlue - cBlue)
+        deltas.push(delta)
+      }
+
+      const centroidIndex = indexOfSmallest(deltas)
+      const [cRed, cGreen, cBlue] = getVertex3InMatrix(centroids, centroidIndex * 3)
+
+      rgbPixels[pixelIndex + RED_INDEX] = cRed
+      rgbPixels[pixelIndex + GREEN_INDEX] = cGreen
+      rgbPixels[pixelIndex + BLUE_INDEX] = cBlue
+    }
+  }
 
   return rgbPixels
 }
 
 function wrapper(pixels: Uint8ClampedArray[], centroids: number, iterations: number): any {
   const pool = workerpool.pool()
-
-  const newFunc = indexOfMin
 
   // return pool.exec(kmeans, [pixels, centroids, iterations])
   return kmeans(pixels, centroids, iterations)

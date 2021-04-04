@@ -6,10 +6,11 @@ interface Vector {
 
 export interface Centroid extends Vector {
   children: any
+  history: Vector[]
 }
 
 export interface PixelVector extends Vector {
-  centroid?: Centroid
+  centroid?: Vector
 }
 
 export default Vector
